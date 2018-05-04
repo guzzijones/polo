@@ -79,13 +79,19 @@ def main():
         db_session.query(RestTrade).delete()
         db_session.commit()
         for entry in dates:
-            end_datetime_obj = entry+timedelta(days=1)
-            while start_datetime_obj < end_datetime_obj:
+            end_datetime_obj = entry+timedelta(days=1)-timedelta(seconds=1)
+            continue_paging=True
+            while continue_paging==True:
                 results = app.public.returnTradeHistory(currency_pair=pair,
                                          start=start_datetime_obj,
                                          end=end_datetime_obj)
                 load_results(results,pair)
-                start_datetime_obj=db_session.query(func.max(RestTrade.date)).one()[0]+1
+                if len(results) == 50000:
+                    continue_paging=True
+                    start_datetime_obj=db_session.query(func.max(RestTrade.date)).one()[0]+timedelta(seconds=1)
+                else:
+                    #done
+                    continue_paging=False
 
     # normal daily run
     # catch up to midnight today

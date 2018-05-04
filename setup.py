@@ -23,7 +23,7 @@ setup(
     author_email='andrew.shvv@gmail.com',
     install_requires=[
         'sqlalchemy',
-        'psycopg2'
+        'psycopg2-binary'
     ],
     classifiers=[
         'Operating System :: OS Independent',
