@@ -17,9 +17,7 @@ def load_results(results,pair):
     i = 1
     for result in results:
         print("submitting row " + str(i) + " " + str(result["globalTradeID"]) )
-        #if len(queryid) > 0:
-        #    pass
-        #else:
+        print("date"+result["date"])
         i+=1
         trade = RestTrade()
         trade.globalTradeID=result["globalTradeID"]
@@ -39,13 +37,26 @@ def get_results(app,pair,start_datetime_obj,end_datetime_obj):
                                          start=start_datetime_obj,
                                          end=end_datetime_obj)
 
+def load_paged(app,pair,entry):
+    continue_paging=True
+    end_datetime_obj = entry+timedelta(days=1)-timedelta(seconds=1)
+    while continue_paging==True:
+        results = app.public.returnTradeHistory(currency_pair=pair,
+                                 start=entry,
+                                 end=end_datetime_obj)
+        if len(results) > 0:
+            load_results(results,pair)
+        if len(results) == 50000:
+            print("len hit 50000")
+            continue_paging=True
+            entry=datetime.strptime(results[-1]["date"])+timedelta(seconds=1)
+            print("new start:"+ str(start_datetime_obj))
+        else:
+            #done
+            continue_paging=False
+
 
 def main():
-    HIST_WINDOWS = [
-        ['2018-01-01','2018-01-31'],
-        ['2018-02-01','2018-02-28'],
-        ['2018-03-01','2018-03-31']
-    ]
     parser = argparse.ArgumentParser()
     parser.add_argument("--api_key",help="api key", required=True)
     parser.add_argument("--api_secret",help="api secret", required=True)
@@ -76,35 +87,15 @@ def main():
     dates = get_dates(start_datetime_obj)
 
     if args.hist:
-        db_session.query(RestTrade).delete()
+        if not args.start:
+            raise RuntimeError("missing arg start_date")
+        #db_session.query(RestTrade).delete()
         db_session.commit()
         for entry in dates:
-            end_datetime_obj = entry+timedelta(days=1)-timedelta(seconds=1)
-            continue_paging=True
-            while continue_paging==True:
-                results = app.public.returnTradeHistory(currency_pair=pair,
-                                         start=start_datetime_obj,
-                                         end=end_datetime_obj)
-                load_results(results,pair)
-                if len(results) == 50000:
-                    continue_paging=True
-                    start_datetime_obj=db_session.query(func.max(RestTrade.date)).one()[0]+timedelta(seconds=1)
-                else:
-                    #done
-                    continue_paging=False
-
-    # normal daily run
-    # catch up to midnight today
-    # get max datetime + 1 second
-    start= db_session.query(func.max(RestTrade.date)).one()[0]+1
-    # pull result
-    midnight_today=datetime.today()
-    while start < midnight_today :
-        results = app.public.returnTradeHistory(currency_pair=pair,
-                                         start=start)
-        load_results(results,pair)
-        start= db_session.query(func.max(RestTrade.date)).one()[0]+1
-
+            print("starting date:" + str(entry))
+            load_paged(app,pair,entry)
+    else:
+        pass
 
 if __name__== "__main__":
     #todo(aj) arg for key and sec
