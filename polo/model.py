@@ -26,7 +26,7 @@ class RestTrade(Base):
 class Trade(Base):
     __tablename__ = 'trade'
     cur_id = Column(Integer)
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer)
     book= Column(String(length=1))
     type = Column(Boolean)
     price = Column(Float)
