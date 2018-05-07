@@ -23,15 +23,24 @@ class RestTrade(Base):
     total=Column(Float)
 
 
-class Trade(Base):
+class TradeSocket(Base):
     __tablename__ = 'trade'
-    cur_id = Column(Integer)
-    id = Column(Integer)
-    book= Column(String(length=1))
-    type = Column(Boolean)
+    trade= Column(String(length=1))
+    id = Column(Integer,primary_key=True)
+    book = Column(String(length=10),primary_key=True)
+    type= Column(String(length=5))
     price = Column(Float)
-    quantity = Column(Float)
-    active = Column(Boolean)
+    amount = Column(Float)
+    timestamp=(Column(DateTime))
+
+class OrderBookSocket(Base):
+    __tablename__='orderbook'
+    cur_id = Column(Integer,primary_key=True)
+    id = Column(Integer,primary_key=True)
+    orderbook=Column(String(length=1))
+    bid_ask = Column(Boolean)
+    price = Column(Float)
+    amount = Column(Float)
 
 session_maker = sessionmaker(bind=db_engine)
 db_session = session_maker()

@@ -1,6 +1,6 @@
 from poloniex.app import SyncApp
 import argparse
-from polo.model import Trade,db_session,RestTrade
+from polo.model import TradeSocket,db_session,RestTrade
 from datetime import datetime,timedelta
 from sqlalchemy import func
 
@@ -10,6 +10,24 @@ def get_dates(start,end=datetime.today()+timedelta(days=1)):
         date_list.append(start)
         start = start+timedelta(days=1)
     return date_list
+
+def load_results_tradesocket(results,pair):
+    print("Results to upload:" + str(len(results)))
+    i = 1
+    for result in results:
+        print("submitting row " + str(i) + " " + str(result["globalTradeID"]) )
+        print("date"+result["date"])
+        i+=1
+        trade = TradeSocket()
+        trade.trade="t"
+        trade.id=result['tradeID']
+        trade.timestamp= result['date']
+        trade.book= pair
+        trade.sell_buy= result['type']
+        trade.price = result['rate']
+        trade.amount= result['amount']
+        db_session.add(trade)
+        db_session.commit()
 
 def load_results(results,pair):
     print("Results to upload:" + str(len(results)))
@@ -48,7 +66,7 @@ def load_paged(app,pair,entry,end=None):
                                  start=entry,
                                  end=end_datetime_obj)
         if len(results) > 0:
-            load_results(results,pair)
+            load_results_tradesocket(results,pair)
 
         # check for paging results
         if len(results) == 50000:
@@ -126,6 +144,7 @@ def main():
     parser_startend = subparser.add_parser("startend", help="run start end")
     parser_startend.add_argument("--start",help="start yyyy-mm-dd hh:mm:ss")
     parser_startend.add_argument("--end",help="start yyyy-mm-dd hh:mm:ss")
+    parser_startend.set_defaults(func=parse_startend)
 
     args = parser.parse_args()
     args.func(args)
