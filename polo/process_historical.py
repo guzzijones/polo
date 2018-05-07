@@ -123,7 +123,7 @@ def parse_current(args):
                   api_sec=args.api_secret)
 
     pair = args.pair
-    start_date = db_session.query(func.max(RestTrade.date)).one()[0] + timedelta(seconds=1)
+    start_date = db_session.query(func.max(TradeSocket.timestamp)).one()[0] + timedelta(seconds=1)
     dates = get_dates(start_date)
     for entry in dates:
         print("starting datetime: " + str(entry))

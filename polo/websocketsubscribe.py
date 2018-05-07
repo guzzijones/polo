@@ -23,11 +23,15 @@ class PoloWebSocket(object):
                                   on_error = self.on_error,
                                   on_close = self.on_close)
 
+        #set reverse lookup on code instead of channel order book
+        self.code_map = {}
+        for key,value in PoloWebSocket.CHANNEL_MAP.items():
+            self.code_map[value]=key
+
         self.message_count={}
         for channel in self.channels:
             self.message_count[PoloWebSocket.CHANNEL_MAP[channel]]=0
 
-    #todo(aj) make this a decorator
     def handle_orderbook_header(self,data_list):
         pass
         print("handle header orderbook")
@@ -38,7 +42,8 @@ class PoloWebSocket(object):
         if self.message_count[channel_id]==0:
             print("handle header")
             self.handle_orderbook_header(data_list)
-            self.message_count[channel_id]+=1
+            if self.message_count[channel_id]==0:
+                self.message_count[channel_id]+=1
         else:
             print("handle_cur")
 
@@ -84,7 +89,8 @@ class PoloWebSocket(object):
 
 if __name__ == "__main__":
     #todo(aj) sqlalchemy clear orderbook.
-    channels=['BTC_XMR',1001,1002,1003]
+    #channels=['BTC_XMR',1001,1002,1003]
+    channels=['BTC_XMR']
     polosock = PoloWebSocket(channels)
     websocket.enableTrace(True)
     polosock.run()
