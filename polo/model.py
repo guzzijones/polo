@@ -22,6 +22,16 @@ class RestTrade(Base):
     amount=Column(Float)
     total=Column(Float)
 
+class LargeTrade(Base):
+    __tablename__ = 'large_trade'
+    trade= Column(String(length=1))
+    id = Column(Integer,primary_key=True)
+    threshold=Column(Integer,primary_key=True)
+    book = Column(String(length=10),primary_key=True)
+    type= Column(String(length=5))
+    price = Column(Float)
+    amount = Column(Float)
+    timestamp=(Column(DateTime))
 
 class TradeSocket(Base):
     __tablename__ = 'trade'
@@ -32,7 +42,6 @@ class TradeSocket(Base):
     price = Column(Float)
     amount = Column(Float)
     timestamp=(Column(DateTime))
-    large = Column(Boolean,default=False)
 
 class OrderBookSocket(Base):
     __tablename__='orderbook'
