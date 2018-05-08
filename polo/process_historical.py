@@ -3,6 +3,7 @@ import argparse
 from polo.model import TradeSocket,db_session,RestTrade
 from datetime import datetime,timedelta
 from sqlalchemy import func
+from polo.trade import Trade
 
 def get_dates(start,end=datetime.today()+timedelta(days=1)):
     date_list = []
@@ -11,42 +12,23 @@ def get_dates(start,end=datetime.today()+timedelta(days=1)):
         start = start+timedelta(days=1)
     return date_list
 
-def load_results_tradesocket(results,pair):
+def load_results_tradesocket(results,pair,threshold=None):
     print("Results to upload:" + str(len(results)))
     i = 1
     for result in results:
         print("submitting row " + str(i) + " " + str(result["globalTradeID"]) )
         print("date"+result["date"])
         i+=1
-        trade = TradeSocket()
-        trade.trade="t"
-        trade.id=result['tradeID']
-        trade.timestamp= result['date']
-        trade.book= pair
-        trade.sell_buy= result['type']
-        trade.price = result['rate']
-        trade.amount= result['amount']
-        db_session.add(trade)
-        db_session.commit()
-
-def load_results(results,pair):
-    print("Results to upload:" + str(len(results)))
-    i = 1
-    for result in results:
-        print("submitting row " + str(i) + " " + str(result["globalTradeID"]) )
-        print("date"+result["date"])
-        i+=1
-        trade = RestTrade()
-        trade.globalTradeID=result["globalTradeID"]
-        trade.tradeID=result['tradeID']
-        trade.date = result['date']
-        trade.book = pair
-        trade.type= result['type']
-        trade.rate = result['rate']
-        trade.amount= result['amount']
-        trade.total=result['total']
-        db_session.add(trade)
-        db_session.commit()
+        trade = Trade(
+        "t",
+        result['tradeID'],
+        result['date'],
+        pair,
+        result['type'],
+        result['rate'],
+        result['amount'],
+        threshold)
+        trade.commit()
 
 
 def get_results(app,pair,start_datetime_obj,end_datetime_obj):
@@ -54,7 +36,7 @@ def get_results(app,pair,start_datetime_obj,end_datetime_obj):
                                          start=start_datetime_obj,
                                          end=end_datetime_obj)
 
-def load_paged(app,pair,entry,end=None):
+def load_paged(app,pair,entry,end=None,threshold=None):
     continue_paging=True
     end_datetime_obj=None
     if end is None:
@@ -66,7 +48,7 @@ def load_paged(app,pair,entry,end=None):
                                  start=entry,
                                  end=end_datetime_obj)
         if len(results) > 0:
-            load_results_tradesocket(results,pair)
+            load_results_tradesocket(results,pair,threshold=threshold)
 
         # check for paging results
         if len(results) == 50000:
@@ -97,9 +79,9 @@ def parse_startend(args):
     for entry in dates:
         print("starting date: " + str(entry))
         if i==index_count:
-            load_paged(app,pair,entry,end_datetime_obj)
+            load_paged(app,pair,entry,end_datetime_obj,threshold=args.threshold)
         else:
-            load_paged(app,pair,entry)
+            load_paged(app,pair,entry,threshold=args.threshold)
 
 def parse_hist(args):
     app = SyncApp(api_key=args.api_key,
@@ -116,7 +98,7 @@ def parse_hist(args):
     #db_session.commit()
     for entry in dates:
         print("starting date: " + str(entry))
-        load_paged(app,pair,entry)
+        load_paged(app,pair,entry,threshold=args.threshold)
 
 def parse_current(args):
     app = SyncApp(api_key=args.api_key,
@@ -127,7 +109,7 @@ def parse_current(args):
     dates = get_dates(start_date)
     for entry in dates:
         print("starting datetime: " + str(entry))
-        load_paged(app,pair,entry)
+        load_paged(app,pair,entry,threshold=args.threshold)
 
 
 def main():
@@ -136,6 +118,7 @@ def main():
     parser.add_argument("--api_key",help="api key", required=True)
     parser.add_argument("--api_secret",help="api secret", required=True)
     parser.add_argument("--pair",help="pair slug", required=True)
+    parser.add_argument("--threshold",type=int,help="large trade boolean threshold")
     parser_hist = subparser.add_parser("hist",help="run hist")
     parser_hist.add_argument("--start",help="start yyyy-mm-dd")
     parser_hist.set_defaults(func=parse_hist)

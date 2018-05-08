@@ -32,6 +32,7 @@ class TradeSocket(Base):
     price = Column(Float)
     amount = Column(Float)
     timestamp=(Column(DateTime))
+    large = Column(Boolean,default=False)
 
 class OrderBookSocket(Base):
     __tablename__='orderbook'
