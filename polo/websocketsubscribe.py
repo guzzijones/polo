@@ -4,7 +4,8 @@ import time
 import json
 import argparse
 from poloniex.app import SyncApp
-from polo.model import TradeSocket,OrderBookSocket
+from polo.trade import Trade
+from datetime import datetime
 import sys
 #todo(aj) create model based on https://stackoverflow.com/questions/32154121/how-to-connect-to-poloniex-com-websocket-api-using-a-python-library
 #todo
@@ -36,7 +37,6 @@ class PoloWebSocket(object):
 
 
     def handle_cur(self,data_list_str):
-        #todo(aj) initial message can be handled via a decorator
         data_list = eval(data_list_str)
         print(data_list)
         channel_id=data_list[0]
@@ -53,7 +53,6 @@ class PoloWebSocket(object):
                     print("handle header")
                     self.orderbooks[book]=orderbook_data
                 if type_record == "o":
-                    type_record=entry[0]
                     ask_bid=entry[1]
                     price= entry[2]
                     amount = entry[3]
@@ -63,7 +62,18 @@ class PoloWebSocket(object):
                         self.orderbooks[book]['orderBook'][ask_bid][price]=amount
                     # 1 = bids
                     # 0 = asks
-                #todo(aj) type_record=="t"
+                if type_record =="t":
+                    date_time = datetime.utcfromtimestamp(int(entry[5])).strftime('%Y-%m-%d %H:%M:%S')
+                    buy_sell = "buy" if entry[2]== 0 else "sell"
+                    trade = Trade(entry[0],
+                                  int(entry[1]),
+                                  date_time,
+                                  book,
+                                  buy_sell,
+                                  float(entry[3]),
+                                  float(entry[4])
+                                  )
+                    trade.commit()
 
     def handle_1001(self,data_list):
         pass
@@ -104,11 +114,9 @@ class PoloWebSocket(object):
         self.ws.on_open = self.on_open
         self.ws.run_forever()
 
-if __name__ == "__main__":
-    #todo(aj) sqlalchemy clear orderbook.
-    #channels=['BTC_XMR',1001,1002,1003]
+
+def main():
     parser = argparse.ArgumentParser()
-    subparser= parser.add_subparsers(help="subcommand help")
     parser.add_argument("--api_key",help="api key", required=True)
     parser.add_argument("--api_secret",help="api secret", required=True)
     parser.add_argument("--pair",action='append',help="pair slug", required=True)
@@ -128,3 +136,7 @@ if __name__ == "__main__":
     #                          on_close = on_close)
     #ws.on_open = on_open
     #ws.run_forever()
+    #channels=['BTC_XMR',1001,1002,1003]
+
+if __name__ == "__main__":
+    main()

@@ -31,7 +31,8 @@ setup(
     ],
     entry_points={
         'console_scripts':[
-            'polo_history = polo.process_historical:main'
+            'polo_history = polo.process_historical:main',
+            'polo_socket = polo.websocketsubscribe:main'
             ]
         }
 )
