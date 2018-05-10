@@ -1,5 +1,5 @@
 
-from polo.model import TradeSocket,db_session,RestTrade,LargeTrade
+from polo.model import TradeSocket,db_session
 
 class Trade(object):
     def __init__(self,
@@ -9,8 +9,8 @@ class Trade(object):
                  pair,
                  sell_buy,
                  price,
-                 amount,
-                 threshold):
+                 amount
+                 ):
         self.trade=TradeSocket()
         self.trade.trade=trade_type
         self.trade.id=id

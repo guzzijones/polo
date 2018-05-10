@@ -1,6 +1,6 @@
 from poloniex.app import SyncApp
 import argparse
-from polo.model import TradeSocket,db_session,RestTrade
+from polo.model import TradeSocket,db_session
 from datetime import datetime,timedelta
 from sqlalchemy import func
 from polo.trade import Trade
