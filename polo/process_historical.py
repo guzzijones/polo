@@ -12,7 +12,7 @@ def get_dates(start,end=datetime.today()+timedelta(days=1)):
         start = start+timedelta(days=1)
     return date_list
 
-def load_results_tradesocket(results,pair,threshold=None):
+def load_results_tradesocket(results,pair):
     print("Results to upload:" + str(len(results)))
     i = 1
     for result in results:
@@ -27,7 +27,7 @@ def load_results_tradesocket(results,pair,threshold=None):
         result['type'],
         result['rate'],
         result['amount'],
-        threshold)
+        )
         trade.commit()
 
 
@@ -36,7 +36,7 @@ def get_results(app,pair,start_datetime_obj,end_datetime_obj):
                                          start=start_datetime_obj,
                                          end=end_datetime_obj)
 
-def load_paged(app,pair,entry,end=None,threshold=None):
+def load_paged(app,pair,entry,end=None):
     continue_paging=True
     end_datetime_obj=None
     if end is None:
@@ -48,7 +48,7 @@ def load_paged(app,pair,entry,end=None,threshold=None):
                                  start=entry,
                                  end=end_datetime_obj)
         if len(results) > 0:
-            load_results_tradesocket(results,pair,threshold=threshold)
+            load_results_tradesocket(results,pair)
 
         # check for paging results
         if len(results) == 50000:
@@ -79,9 +79,9 @@ def parse_startend(args):
     for entry in dates:
         print("starting date: " + str(entry))
         if i==index_count:
-            load_paged(app,pair,entry,end_datetime_obj,threshold=args.threshold)
+            load_paged(app,pair,entry,end_datetime_obj)
         else:
-            load_paged(app,pair,entry,threshold=args.threshold)
+            load_paged(app,pair,entry)
 
 def parse_hist(args):
     app = SyncApp(api_key=args.api_key,
@@ -98,7 +98,7 @@ def parse_hist(args):
     #db_session.commit()
     for entry in dates:
         print("starting date: " + str(entry))
-        load_paged(app,pair,entry,threshold=args.threshold)
+        load_paged(app,pair,entry)
 
 def parse_current(args):
     app = SyncApp(api_key=args.api_key,
@@ -109,7 +109,7 @@ def parse_current(args):
     dates = get_dates(start_date)
     for entry in dates:
         print("starting datetime: " + str(entry))
-        load_paged(app,pair,entry,threshold=args.threshold)
+        load_paged(app,pair,entry)
 
 
 def main():
@@ -118,7 +118,6 @@ def main():
     parser.add_argument("--api_key",help="api key", required=True)
     parser.add_argument("--api_secret",help="api secret", required=True)
     parser.add_argument("--pair",help="pair slug", required=True)
-    parser.add_argument("--threshold",type=int,help="large trade boolean threshold")
     parser_hist = subparser.add_parser("hist",help="run hist")
     parser_hist.add_argument("--start",help="start yyyy-mm-dd")
     parser_hist.set_defaults(func=parse_hist)
