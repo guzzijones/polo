@@ -23,7 +23,8 @@ setup(
     author_email='andrew.shvv@gmail.com',
     install_requires=[
         'sqlalchemy',
-        'psycopg2-binary'
+        'psycopg2-binary',
+        'websocket-client'
     ],
     classifiers=[
         'Operating System :: OS Independent',
