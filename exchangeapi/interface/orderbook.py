@@ -22,14 +22,34 @@ class Rounded(object):
     def __eq__(self,other):
         return self.key()==other.key()
 
+    def __lt__(self,other):
+        return self.value < other.value
+
+    def __gt__(self,other):
+        return self.value > other.value
+
+    def __le__(self,other):
+        return self.value <= other.value
+
+    def __ge__(self,other):
+        return self.value >= other.value
+
+    def __ne__(self,other):
+        return self.value != other.value
+
     def __hash__(self):
         return hash(self.key())
+
+    def __str__(self):
+        return str(self.value)
 
 
 
 class MarketOrderBook(object):
     """orderbook interface class
         """
+    ASK="ASK"
+    BID="BID"
     def __init__(self,slug,asks,bids):
         """slug = string ie - BTC_XMR,
             asks = dict keys-Rounded price, value- Rounded amount

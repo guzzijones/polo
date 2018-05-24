@@ -39,10 +39,14 @@ class PoloWebSocket(object):
 
 
     def post_orderbook_handle_askbid(self,book,ask_bid,price):
-        """abstract function to override"""
-        pass
+        """abstract function to override
+        book = MarketOrderBook
+        ask_bid = MarketOrderBook.BID or MarketOrderBook.ASK
+        price = Rounded"""
+
     def post_orderbook_load(self,book):
         pass
+
     def get_float_dict(self,in_dict):
         new_dict = in_dict
         index=0
@@ -74,7 +78,7 @@ class PoloWebSocket(object):
                     market_book = ord.MarketOrderBook(book,book_details["orderBook"][0],
                                                   book_details["orderBook"][1])
                     self.ord_book.add_market(market_book)
-                    self.post_orderbook_load(book)
+                    self.post_orderbook_load(market_book)
                 if type_record == "o":
                     ask_bid=entry[1]
                     price= entry[2]
@@ -91,7 +95,8 @@ class PoloWebSocket(object):
                         else:
                             self.ord_book.markets[book].bids[ord.Rounded(float(price),PoloWebSocket.DECIMALS)]=\
                                 ord.Rounded(float(amount),PoloWebSocket.DECIMALS)
-                        self.post_orderbook_handle_askbid(book,ask_bid,ord.Rounded(float(price),PoloWebSocket.DECIMALS))
+                        ask_bid_const = ord.MarketOrderBook.ASK if ask_bid==1 else ord.MarketOrderBook.BID
+                        self.post_orderbook_handle_askbid(book,ask_bid_const,ord.Rounded(float(price),PoloWebSocket.DECIMALS))
                     # 1 = bids
                     # 0 = asks
                 if type_record =="t" and self.process_trades:
