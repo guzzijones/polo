@@ -9,18 +9,18 @@ with open(os.path.join(os.path.dirname(__file__), 'README.md')) as readme:
 os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 setup(
-    name='polo',
+    name='exchangeapi',
     version='0.1',
     packages=[
-        'polo',
+        'exchangeapi',
+        'exchangeapi.interface'
     ],
     include_package_data=True,
     description='Python Polo',
     long_description=README,
-    url='https://github.com/absortium/poloniex.git',
-    author='Andrey Samokhvalov',
+    author='ajonen',
     license='MIT',
-    author_email='andrew.shvv@gmail.com',
+    author_email='ajonen@mailcan.com',
     install_requires=[
         'sqlalchemy',
         'psycopg2-binary',
@@ -32,8 +32,9 @@ setup(
     ],
     entry_points={
         'console_scripts':[
-            'polo_history = polo.process_historical:main',
-            'polo_socket = polo.websocketsubscribe:main'
+            'polo_history = exchangeapi.poloprocess_historical:main',
+            'polo_socket = exchangeapi.polowebsocketsubscribe:main'
             ]
-        }
+        },
+    zip_safe=False
 )

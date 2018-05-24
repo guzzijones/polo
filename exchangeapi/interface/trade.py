@@ -1,5 +1,5 @@
 
-from polo.model import TradeSocket,db_session
+from exchangeapi.interface.model import TradeSocket,db_session
 
 class Trade(object):
     def __init__(self,

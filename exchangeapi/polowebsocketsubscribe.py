@@ -4,22 +4,22 @@ import time
 import json
 import argparse
 from poloniex.app import SyncApp
-from polo.trade import Trade
+from exchangeapi.interface.trade import Trade
 from datetime import datetime
 import sys
-#todo(aj) create model based on https://stackoverflow.com/questions/32154121/how-to-connect-to-poloniex-com-websocket-api-using-a-python-library
-#todo
+import exchangeapi.interface.orderbook as ord
+
 
 class PoloWebSocket(object):
+    DECIMALS=8
     CHANNEL_MAP={
         1001:1001, #trollbox
         1002:1002, #ticker
         1003:1003, #base coin 24 hour stats
         1010:1010  #heartbeat
     }
-    def __init__(self,tickers,channels=None):
+    def __init__(self,tickers,channels=None,process_trades=False):
 
-        pass
         self.channels=channels
         websocket.enableTrace(True)
         self.ws = websocket.WebSocketApp("wss://api2.poloniex.com/",
@@ -34,7 +34,25 @@ class PoloWebSocket(object):
             self.code_map[value['id']]=key
 
         self.message_count={}
+        self.ord_book = ord.Books("Poloniex")
+        self.process_trades=process_trades
 
+
+    def post_orderbook_handle_askbid(self,book,ask_bid,price):
+        """abstract function to override"""
+        pass
+    def post_orderbook_load(self,book):
+        pass
+    def get_float_dict(self,in_dict):
+        new_dict = in_dict
+        index=0
+        for instance in new_dict["orderBook"]:
+            new_instance = {}
+            for key,value in instance.items():
+                new_instance[ord.Rounded(float(key),PoloWebSocket.DECIMALS)]=ord.Rounded(float(value),PoloWebSocket.DECIMALS)
+            new_dict["orderBook"][index]=new_instance
+            index+=1
+        return new_dict
 
     def handle_cur(self,data_list_str):
         data_list = eval(data_list_str)
@@ -51,18 +69,32 @@ class PoloWebSocket(object):
                 if type_record == "i":
                     orderbook_data = entry[1]
                     print("handle header")
-                    self.orderbooks[book]=orderbook_data
+
+                    book_details=self.get_float_dict(orderbook_data)
+                    market_book = ord.MarketOrderBook(book,book_details["orderBook"][0],
+                                                  book_details["orderBook"][1])
+                    self.ord_book.add_market(market_book)
+                    self.post_orderbook_load(book)
                 if type_record == "o":
                     ask_bid=entry[1]
                     price= entry[2]
                     amount = entry[3]
                     if amount=='0.00000000':
-                        self.orderbooks[book]['orderBook'][ask_bid].pop(price)
+                        if ask_bid==0:
+                            self.ord_book.markets[book].asks.pop(ord.Rounded(float(price),PoloWebSocket.DECIMALS))
+                        else:
+                            self.ord_book.markets[book].bids.pop(ord.Rounded(float(price),PoloWebSocket.DECIMALS))
                     else:
-                        self.orderbooks[book]['orderBook'][ask_bid][price]=amount
+                        if ask_bid==0:
+                            self.ord_book.markets[book].asks[ord.Rounded(float(price),PoloWebSocket.DECIMALS)]=\
+                                ord.Rounded(float(amount),PoloWebSocket.DECIMALS)
+                        else:
+                            self.ord_book.markets[book].bids[ord.Rounded(float(price),PoloWebSocket.DECIMALS)]=\
+                                ord.Rounded(float(amount),PoloWebSocket.DECIMALS)
+                        self.post_orderbook_handle_askbid(book,ask_bid,ord.Rounded(float(price),PoloWebSocket.DECIMALS))
                     # 1 = bids
                     # 0 = asks
-                if type_record =="t":
+                if type_record =="t" and self.process_trades:
                     date_time = datetime.utcfromtimestamp(int(entry[5])).strftime('%Y-%m-%d %H:%M:%S')
                     buy_sell = "buy" if entry[2]== 0 else "sell"
                     trade = Trade(entry[0],
@@ -120,6 +152,7 @@ def main():
     parser.add_argument("--api_key",help="api key", required=True)
     parser.add_argument("--api_secret",help="api secret", required=True)
     parser.add_argument("--pair",action='append',help="pair slug", required=True)
+    parser.add_argument("--process_trades",action='store_true',help="process trades ; upload to slug")
     args = parser.parse_args()
 
     channels=args.pair
@@ -127,7 +160,7 @@ def main():
                   api_sec=args.api_secret)
 
     tickers = app.public.returnTicker()
-    polosock = PoloWebSocket(tickers,channels)
+    polosock = PoloWebSocket(tickers,channels,process_trades=args.process_trades)
     websocket.enableTrace(True)
     polosock.run()
     #ws = websocket.WebSocketApp("wss://api2.poloniex.com/",

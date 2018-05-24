@@ -1,9 +1,9 @@
 from poloniex.app import SyncApp
 import argparse
-from polo.model import TradeSocket,db_session
+from exchangeapi.interface.model import TradeSocket,db_session
 from datetime import datetime,timedelta
 from sqlalchemy import func
-from polo.trade import Trade
+from exchangeapi.interface.trade import Trade
 
 def get_dates(start,end=datetime.today()+timedelta(days=1)):
     date_list = []
