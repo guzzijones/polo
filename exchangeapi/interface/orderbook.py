@@ -8,16 +8,16 @@ class Rounded(object):
         return (self.value,self.decimals)
 
     def __add__(self, other):
-        round(self.value+other.value,self.decimals)
+        return Rounded(self.value + other.value,self.decimals)
 
     def __sub__(self, other):
-        round(self.value - other.value,self.decimals)
+        return Rounded(self.value - other.value,self.decimals)
 
     def __mul__(self,number):
-        return round(self.value * number.value,self.decimals)
+        return Rounded(self.value * number.value,self.decimals)
 
     def __truediv__(self, other):
-        return round(self.value / other.value,self.decimals)
+        return Rounded(self.value / other.value,self.decimals)
 
     def __eq__(self,other):
         return self.key()==other.key()
@@ -43,7 +43,20 @@ class Rounded(object):
     def __str__(self):
         return str(self.value)
 
+class Orders(dict):
+    def __init__(self,input,*args,**kwargs):
+        super(Orders,self).__init__(*args,**kwargs)
+        for key,value in input.items():
+            self[key]=value
+        self.min = min(self.keys())
+        self.max = max(self.keys())
 
+    def pop(self, k,d=None):
+        super(Orders,self).pop(k,d)
+        if k == self.min:
+            self.min = min(self.keys())
+        if k == self.max:
+            self.max = max(self.keys())
 
 class MarketOrderBook(object):
     """orderbook interface class

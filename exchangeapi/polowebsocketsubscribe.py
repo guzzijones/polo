@@ -1,3 +1,6 @@
+import logging
+import traceback
+LOG = logging.getLogger(__name__)
 import websocket
 import _thread
 import time
@@ -8,9 +11,10 @@ from exchangeapi.interface.trade import Trade
 from datetime import datetime
 import sys
 import exchangeapi.interface.orderbook as ord
+import exchangeapi.interface.triangle as tri
+import sys
 
-
-class PoloWebSocket(object):
+class PoloWebSocket(tri.SockerWorker):
     DECIMALS=8
     CHANNEL_MAP={
         1001:1001, #trollbox
@@ -18,7 +22,16 @@ class PoloWebSocket(object):
         1003:1003, #base coin 24 hour stats
         1010:1010  #heartbeat
     }
+
     def __init__(self,tickers,channels=None,process_trades=False):
+        """
+
+        :param tickers: dict
+        :param channels: list of slugs
+        :param process_trades:  boolean
+        :param ws_address: string
+        """
+        super(PoloWebSocket,self).__init__()
 
         self.channels=channels
         websocket.enableTrace(True)
@@ -38,14 +51,6 @@ class PoloWebSocket(object):
         self.process_trades=process_trades
 
 
-    def post_orderbook_handle_askbid(self,book,ask_bid,price):
-        """abstract function to override
-        book = MarketOrderBook
-        ask_bid = MarketOrderBook.BID or MarketOrderBook.ASK
-        price = Rounded"""
-
-    def post_orderbook_load(self,book):
-        pass
 
     def get_float_dict(self,in_dict):
         new_dict = in_dict
@@ -60,10 +65,9 @@ class PoloWebSocket(object):
 
     def handle_cur(self,data_list_str):
         data_list = eval(data_list_str)
-        print(data_list)
+        LOG.debug(data_list)
         channel_id=data_list[0]
-        print("channelid " + str(channel_id))
-        #print("codemap " + str(self.code_map))
+        LOG.info("channelid " + str(channel_id))
         if channel_id in self.code_map.keys():
             book = self.code_map[channel_id]
             seq =  data_list[1]
@@ -72,31 +76,34 @@ class PoloWebSocket(object):
                 type_record = entry[0]
                 if type_record == "i":
                     orderbook_data = entry[1]
-                    print("handle header")
+                    LOG.debug("handle header")
 
                     book_details=self.get_float_dict(orderbook_data)
                     market_book = ord.MarketOrderBook(book,book_details["orderBook"][0],
                                                   book_details["orderBook"][1])
                     self.ord_book.add_market(market_book)
                     self.post_orderbook_load(market_book)
+                    #raise RuntimeError("test")
                 if type_record == "o":
                     ask_bid=entry[1]
                     price= entry[2]
                     amount = entry[3]
+                    ask_bid_const = ord.MarketOrderBook.ASK if ask_bid==0 else ord.MarketOrderBook.BID
                     if amount=='0.00000000':
-                        if ask_bid==0:
+                        if ask_bid_const==ord.MarketOrderBook.ASK:
                             self.ord_book.markets[book].asks.pop(ord.Rounded(float(price),PoloWebSocket.DECIMALS))
+                            self.post_ask_pop(book=book,ask_bid=ask_bid_const,price=ord.Rounded(float(price),decimals=PoloWebSocket.DECIMALS))
                         else:
                             self.ord_book.markets[book].bids.pop(ord.Rounded(float(price),PoloWebSocket.DECIMALS))
+                            self.post_bid_pop(book=book,ask_bid=ask_bid_const,price=ord.Rounded(float(price),decimals=PoloWebSocket.DECIMALS))
                     else:
-                        if ask_bid==0:
+                        if ask_bid_const==ord.MarketOrderBook.ASK:
                             self.ord_book.markets[book].asks[ord.Rounded(float(price),PoloWebSocket.DECIMALS)]=\
                                 ord.Rounded(float(amount),PoloWebSocket.DECIMALS)
                         else:
                             self.ord_book.markets[book].bids[ord.Rounded(float(price),PoloWebSocket.DECIMALS)]=\
                                 ord.Rounded(float(amount),PoloWebSocket.DECIMALS)
-                        ask_bid_const = ord.MarketOrderBook.ASK if ask_bid==1 else ord.MarketOrderBook.BID
-                        self.post_orderbook_handle_askbid(book,ask_bid_const,ord.Rounded(float(price),PoloWebSocket.DECIMALS))
+                        self.post_orderbook_handle_askbid(book=book,ask_bid=ask_bid_const,price=ord.Rounded(float(price),decimals=PoloWebSocket.DECIMALS))
                     # 1 = bids
                     # 0 = asks
                 if type_record =="t" and self.process_trades:
@@ -119,22 +126,26 @@ class PoloWebSocket(object):
         pass
 
     def handle_1003(self,data_list):
-        print("handle_1003")
+        LOG.debug("handle_1003")
         pass
 
     def on_message(self,ws, message):
         # call handler
-        print(message)
-        self.handle_cur(message)
+        LOG.debug(message)
+        try:
+            self.handle_cur(message)
+        except Exception as e:
+            LOG.error(traceback.format_exc())
+            sys.exit(1)
 
     def on_error(self,ws, error):
-        print(error)
+        LOG.error("an error occured:" + error.__str__())
 
     def on_close(self,ws):
-        print("### closed ###")
+        LOG.debug("### closed ###")
 
     def on_open(self,ws):
-        print("ONOPEN")
+        LOG.info("ONOPEN")
         def run(*args):
             #ws.send(json.dumps({'command':'subscribe','channel':1001}))
             #ws.send(json.dumps({'command':'subscribe','channel':1002}))
@@ -144,7 +155,7 @@ class PoloWebSocket(object):
             while True:
                 time.sleep(1)
             ws.close()
-            print("thread terminating...")
+            LOG.info("thread terminating...")
         _thread.start_new_thread(run, ())
 
     def run(self):
@@ -158,7 +169,18 @@ def main():
     parser.add_argument("--api_secret",help="api secret", required=True)
     parser.add_argument("--pair",action='append',help="pair slug", required=True)
     parser.add_argument("--process_trades",action='store_true',help="process trades ; upload to slug")
+    parser.add_argument("--log_file",help="log file")
+    parser.add_argument("--log_level",help="log level")
     args = parser.parse_args()
+
+    if args.log_file is not None:
+        logging.basicConfig(filename=args.log_file,level=getattr(logging,args.log_level.upper()),
+                            format='%(asctime)s %(name)s.%(funcName)s +%(lineno)s: %(levelname)-8s [%(process)d] %(message)s'
+                            )
+    else:
+        logging.basicConfig(level=getattr(logging,args.log_level.upper()),
+                            format='%(asctime)s %(name)s.%(funcName)s +%(lineno)s: %(levelname)-8s [%(process)d] %(message)s'
+                            )
 
     channels=args.pair
     app = SyncApp(api_key=args.api_key,
